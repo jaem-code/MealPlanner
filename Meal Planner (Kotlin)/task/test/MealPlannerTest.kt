@@ -2,33 +2,31 @@ import org.hyperskill.hstest.dynamic.DynamicTest
 import org.hyperskill.hstest.stage.StageTest
 import org.hyperskill.hstest.testcase.CheckResult
 import org.hyperskill.hstest.testing.TestedProgram
+import java.io.File
+import java.sql.DatabaseMetaData
+import java.sql.DriverManager
 
 class MealPlannerTest : StageTest<Any>() {
 
-    @DynamicTest
-    fun normalExe4Test(): CheckResult {
+    @DynamicTest(order = 1)
+    fun normalExe6Test(): CheckResult {
+        try {
+            val dbFile = File("meals.db")
+            if (dbFile.exists()) dbFile.delete()
+        } catch (e: Exception) {
+            return CheckResult(false, "An exception was thrown, while trying to delete a database file.")
+        }
+
         val co = CheckOutput()
         if (!co.start("What would you like to do (add, show, exit)?") )
             return CheckResult(false, "Your program should ask the user about the required action: \"(add, show, exit)?\"")
 
-        if (!co.input("add", "Which meal do you want to add (breakfast, lunch, dinner)?"))
-            return CheckResult(false, "Your program should ask the user about meal category: \"(breakfast, lunch, dinner)?\"")
+        val dbUrl = "jdbc:sqlite:meals.db"
+        val tables = listOf( dbTable("ingredients", listOf(Pair("ingredient", "text"), Pair("ingredient_id", "integer"), Pair("meal_id", "integer"))),
+            dbTable("meals", listOf(Pair("category", "text"), Pair("meal", "text"), Pair("meal_id", "integer"))) )
 
-        if (!co.input("lunch", "Input the meal's name:"))
-            return CheckResult(false, "Your output should contain \"Input the meal's name:\"")
-
-        if (!co.input("sushi", "Input the ingredients:"))
-            return CheckResult(false, "Your output should contain \"Input the ingredients:\"")
-
-        if (!co.input("salmon, rice, avocado", "The meal has been added!"))
-            return CheckResult(false, "Your output should contain \"The meal has been added!\"")
-
-        if (!co.inputNext("What would you like to do (add, show, exit)?"))
-            return CheckResult(false, "Your program should ask the user about the required action: \"(add, show, exit)?\"")
-
-        if (!co.input("show", "Category: lunch", "Name: sushi", "Ingredients:",
-                "salmon", "rice", "avocado"))
-            return CheckResult(false, "Wrong \"show\" output for a saved meal.")
+        val (res, errorStr) = checkTableSchema(dbUrl, tables)
+        if (!res) return CheckResult(false, errorStr)
 
         if (!co.input("exit", "Bye!"))
             return CheckResult(false, "Your output should contain \"Bye!\"")
@@ -39,166 +37,287 @@ class MealPlannerTest : StageTest<Any>() {
         return CheckResult.correct()
     }
 
-    @DynamicTest
-    fun normalExe5Test(): CheckResult {
-        val co = CheckOutput()
-        if (!co.start("What would you like to do (add, show, exit)?") )
-            return CheckResult(false, "Your program should ask the user about the required action: \"(add, show, exit)?\"")
+    @DynamicTest(order = 2)
+    fun normalExe7Test(): CheckResult {
+        try {
+            val dbFile = File("meals.db")
+            if (dbFile.exists()) dbFile.delete()
+        } catch (e: Exception) {
+            return CheckResult(false, "An exception was thrown, while trying to delete a database file.")
+        }
 
-        if (!co.input("add", "Which meal do you want to add (breakfast, lunch, dinner)?"))
-            return CheckResult(false, "Your program should ask the user about meal category: \"(breakfast, lunch, dinner)?\"")
+        try {
+            val co = CheckOutput()
+            if (!co.start("What would you like to do (add, show, exit)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about the required action: \"(add, show, exit)?\""
+                )
 
-        if (!co.input("lunch", "Input the meal's name:"))
-            return CheckResult(false, "Your output should contain \"Input the meal's name:\"")
+            if (!co.input("add", "Which meal do you want to add (breakfast, lunch, dinner)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about meal category: \"(breakfast, lunch, dinner)?\""
+                )
 
-        if (!co.input("sushi", "Input the ingredients:"))
-            return CheckResult(false, "Your output should contain \"Input the ingredients:\"")
+            if (!co.input("lunch", "Input the meal's name:"))
+                return CheckResult(false, "Your output should contain \"Input the meal's name:\"")
 
-        if (!co.input("salmon, rice, avocado", "The meal has been added!"))
-            return CheckResult(false, "Your output should contain \"The meal has been added!\"")
+            if (!co.input("sushi", "Input the ingredients:"))
+                return CheckResult(false, "Your output should contain \"Input the ingredients:\"")
 
-        if (!co.inputNext("What would you like to do (add, show, exit)?"))
-            return CheckResult(false, "Your program should ask the user about the required action: \"(add, show, exit)?\"")
+            if (!co.input("salmon, rice, avocado", "The meal has been added!"))
+                return CheckResult(false, "Your output should contain \"The meal has been added!\"")
 
-        if (!co.input("add", "Which meal do you want to add (breakfast, lunch, dinner)?"))
-            return CheckResult(false, "Your program should ask the user about meal category: \"(breakfast, lunch, dinner)?\"")
+            if (!co.inputNext("What would you like to do (add, show, exit)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about the required action: \"(add, show, exit)?\""
+                )
 
-        if (!co.input("breakfast", "Input the meal's name:"))
-            return CheckResult(false, "Your output should contain \"Input the meal's name:\"")
+            if (!co.input(
+                    "show", "Category: lunch", "Name: sushi", "Ingredients:",
+                    "salmon", "rice", "avocado"
+                )
+            )
+                return CheckResult(false, "Wrong \"show\" output for a saved meal.")
 
-        if (!co.input("oatmeal", "Input the ingredients:"))
-            return CheckResult(false, "Your output should contain \"Input the ingredients:\"")
+            if (!co.input("exit", "Bye!"))
+                return CheckResult(false, "Your output should contain \"Bye!\"")
 
-        if (!co.input("oats, milk, banana, peanut butter", "The meal has been added!"))
-            return CheckResult(false, "Your output should contain \"The meal has been added!\"")
-
-        if (!co.inputNext("What would you like to do (add, show, exit)?"))
-            return CheckResult(false, "Your program should ask the user about the required action: \"(add, show, exit)?\"")
-
-        if (!co.input("show", "Category: lunch", "Name: sushi", "Ingredients:",
-                "salmon", "rice", "avocado", "Category: breakfast", "Name: oatmeal", "Ingredients:",
-                "oats", "milk", "banana", "peanut butter"))
-            return CheckResult(false, "Wrong \"show\" output for 2 saved meals.")
-
-        if (!co.input("exit", "Bye!"))
-            return CheckResult(false, "Your output should contain \"Bye!\"")
-
-        if (!co.programIsFinished() )
-            return CheckResult(false, "The application didn't exit.")
-
-        return CheckResult.correct()
-    }
-
-    @DynamicTest
-    fun exeWithErrors1Test(): CheckResult {
-        val co = CheckOutput()
-        if (!co.start("What would you like to do (add, show, exit)?") )
-            return CheckResult(false, "Your program should ask the user about the required action: \"(add, show, exit)?\"")
-
-        if (!co.input("show", "No meals saved. Add a meal first."))
-            return CheckResult(false, "Your output should contain \"No meals saved. Add a meal first.\"")
-
-        if (!co.input("new meal", "What would you like to do (add, show, exit)?"))
-            return CheckResult(false, "Your program should ask the user about the required action after a wrong command input.")
-
-        if (!co.input("meal", "What would you like to do (add, show, exit)?"))
-            return CheckResult(false, "Your program should ask the user about the required action after a wrong command input.")
-
-        if (!co.input("", "What would you like to do (add, show, exit)?"))
-            return CheckResult(false, "Your program should ask the user about the required action after a wrong command input.")
-
-        if (!co.input(" \t", "What would you like to do (add, show, exit)?"))
-            return CheckResult(false, "Your program should ask the user about the required action after a wrong command input.")
-
-        if (!co.input("add", "Which meal do you want to add (breakfast, lunch, dinner)?"))
-            return CheckResult(false, "Your program should ask the user about meal category: \"(breakfast, lunch, dinner)?\"")
-
-        if (!co.input("dessert", "Wrong meal category! Choose from: breakfast, lunch, dinner."))
-            return CheckResult(false, "Your output should contain \"Wrong meal category! Choose from: breakfast, lunch, dinner.\"")
-
-        if (!co.input("nothing", "Wrong meal category! Choose from: breakfast, lunch, dinner."))
-            return CheckResult(false, "Your output should contain \"Wrong meal category! Choose from: breakfast, lunch, dinner.\"")
-
-        if (!co.input("meal1", "Wrong meal category! Choose from: breakfast, lunch, dinner."))
-            return CheckResult(false, "Your output should contain \"Wrong meal category! Choose from: breakfast, lunch, dinner.\"")
-
-        if (!co.input("meal@", "Wrong meal category! Choose from: breakfast, lunch, dinner."))
-            return CheckResult(false, "Your output should contain \"Wrong meal category! Choose from: breakfast, lunch, dinner.\"")
-
-        if (!co.input("", "Wrong meal category! Choose from: breakfast, lunch, dinner."))
-            return CheckResult(false, "Your output should contain \"Wrong meal category! Choose from: breakfast, lunch, dinner.\"")
-
-        if (!co.input(" \t", "Wrong meal category! Choose from: breakfast, lunch, dinner."))
-            return CheckResult(false, "Your output should contain \"Wrong meal category! Choose from: breakfast, lunch, dinner.\"")
-
-        if (!co.input("lunch", "Input the meal's name:"))
-            return CheckResult(false, "Your output should contain \"Input the meal's name:\"")
-
-        if (!co.input("burger1", "Wrong format. Use letters only!"))
-            return CheckResult(false, "Your output should contain \"Wrong format. Use letters only!\"")
-
-        if (!co.input("sushi@", "Wrong format. Use letters only!"))
-            return CheckResult(false, "Your output should contain \"Wrong format. Use letters only!\"")
-
-        if (!co.input("", "Wrong format. Use letters only!"))
-            return CheckResult(false, "Your output should contain \"Wrong format. Use letters only!\"")
-
-        if (!co.input(" \t", "Wrong format. Use letters only!"))
-            return CheckResult(false, "Your output should contain \"Wrong format. Use letters only!\"")
-
-        if (!co.input("sushi", "Input the ingredients:"))
-            return CheckResult(false, "Your output should contain \"Input the ingredients:\"")
-
-        if (!co.input("salmon, rice1, avocado", "Wrong format. Use letters only!"))
-            return CheckResult(false, "Your output should contain \"Wrong format. Use letters only!\"")
-
-        if (!co.input("salmon, , avocado", "Wrong format. Use letters only!"))
-            return CheckResult(false, "Your output should contain \"Wrong format. Use letters only!\"")
-
-        if (!co.input("salmon,, avocado", "Wrong format. Use letters only!"))
-            return CheckResult(false, "Your output should contain \"Wrong format. Use letters only!\"")
-
-        if (!co.input("salmon, rice, ", "Wrong format. Use letters only!"))
-            return CheckResult(false, "Your output should contain \"Wrong format. Use letters only!\"")
-
-        if (!co.input("salmon, rice, avocado@", "Wrong format. Use letters only!"))
-            return CheckResult(false, "Your output should contain \"Wrong format. Use letters only!\"")
-
-        if (!co.input("salmon, rice, avocado", "The meal has been added!"))
-            return CheckResult(false, "Your output should contain \"The meal has been added!\"")
-
-        if (!co.inputNext("What would you like to do (add, show, exit)?"))
-            return CheckResult(false, "Your program should ask the user about the required action: \"(add, show, exit)?\"")
-
-        if (!co.input("add", "Which meal do you want to add (breakfast, lunch, dinner)?"))
-            return CheckResult(false, "Your program should ask the user about meal category: \"(breakfast, lunch, dinner)?\"")
-
-        if (!co.input("breakfast", "Input the meal's name:"))
-            return CheckResult(false, "Your output should contain \"Input the meal's name:\"")
-
-        if (!co.input("oatmeal", "Input the ingredients:"))
-            return CheckResult(false, "Your output should contain \"Input the ingredients:\"")
-
-        if (!co.input("oats, milk, banana, peanut butter", "The meal has been added!"))
-            return CheckResult(false, "Your output should contain \"The meal has been added!\"")
-
-        if (!co.inputNext("What would you like to do (add, show, exit)?"))
-            return CheckResult(false, "Your program should ask the user about the required action: \"(add, show, exit)?\"")
-
-        if (!co.input("show", "Category: lunch", "Name: sushi", "Ingredients:",
-                "salmon", "rice", "avocado", "Category: breakfast", "Name: oatmeal", "Ingredients:",
-                "oats", "milk", "banana", "peanut butter"))
-            return CheckResult(false, "Wrong \"show\" output for 2 saved meals.")
-
-        if (!co.input("exit", "Bye!"))
-            return CheckResult(false, "Your output should contain \"Category: lunch\"")
-
-        if (!co.programIsFinished() )
-            return CheckResult(false, "Bye!")
+            if (!co.programIsFinished())
+                return CheckResult(false, "The application didn't exit.")
+        } catch (e: Exception) {
+            return CheckResult(false, "An exception was thrown while testing - ${e.message}")
+        }
 
         return CheckResult.correct()
     }
 
+    @DynamicTest(order = 3)
+    fun normalExe8Test(): CheckResult {
+        try {
+            val dbFile = File("meals.db")
+            if (!dbFile.exists()) return CheckResult(false, "The meals.db database file doesn't exist.")
+        } catch (e: Exception) {
+            return CheckResult(false, "An exception was thrown, while trying to check a database file.")
+        }
+        try {
+            val co = CheckOutput()
+            if (!co.start("What would you like to do (add, show, exit)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about the required action: \"(add, show, exit)?\""
+                )
+
+            if (!co.input(
+                    "show", "Category: lunch", "Name: sushi", "Ingredients:",
+                    "salmon", "rice", "avocado"
+                )
+            )
+                return CheckResult(false, "Wrong \"show\" output for a saved meal.")
+
+            if (!co.input("exit", "Bye!"))
+                return CheckResult(false, "Your output should contain \"Bye!\"")
+
+            if (!co.programIsFinished())
+                return CheckResult(false, "The application didn't exit.")
+        } catch (e: Exception) {
+            return CheckResult(false, "An exception was thrown while testing - ${e.message}")
+        }
+
+        return CheckResult.correct()
+    }
+
+    @DynamicTest(order = 4)
+    fun normalExeNew01Test(): CheckResult {
+        try {
+            val dbFile = File("meals.db")
+            if (dbFile.exists()) dbFile.delete()
+        } catch (e: Exception) {
+            return CheckResult(false, "An exception was thrown, while trying to delete a database file.")
+        }
+
+        try {
+            val co = CheckOutput()
+            if (!co.start("What would you like to do (add, show, exit)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about the required action: \"(add, show, exit)?\""
+                )
+
+            if (!co.input("add", "Which meal do you want to add (breakfast, lunch, dinner)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about meal category: \"(breakfast, lunch, dinner)?\""
+                )
+
+            if (!co.input("lunch", "Input the meal's name:"))
+                return CheckResult(false, "Your output should contain \"Input the meal's name:\"")
+
+            if (!co.input("sushi", "Input the ingredients:"))
+                return CheckResult(false, "Your output should contain \"Input the ingredients:\"")
+
+            if (!co.input("salmon, rice, avocado", "The meal has been added!"))
+                return CheckResult(false, "Your output should contain \"The meal has been added!\"")
+
+            if (!co.inputNext("What would you like to do (add, show, exit)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about the required action: \"(add, show, exit)?\""
+                )
+
+            if (!co.input("add", "Which meal do you want to add (breakfast, lunch, dinner)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about meal category: \"(breakfast, lunch, dinner)?\""
+                )
+
+            if (!co.input("breakfast", "Input the meal's name:"))
+                return CheckResult(false, "Your output should contain \"Input the meal's name:\"")
+
+            if (!co.input("english", "Input the ingredients:"))
+                return CheckResult(false, "Your output should contain \"Input the ingredients:\"")
+
+            if (!co.input("sausages, eggs", "The meal has been added!"))
+                return CheckResult(false, "Your output should contain \"The meal has been added!\"")
+
+            if (!co.inputNext("What would you like to do (add, show, exit)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about the required action: \"(add, show, exit)?\""
+                )
+
+            if (!co.input("add", "Which meal do you want to add (breakfast, lunch, dinner)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about meal category: \"(breakfast, lunch, dinner)?\""
+                )
+
+            if (!co.input("dinner", "Input the meal's name:"))
+                return CheckResult(false, "Your output should contain \"Input the meal's name:\"")
+
+            if (!co.input("meatballs", "Input the ingredients:"))
+                return CheckResult(false, "Your output should contain \"Input the ingredients:\"")
+
+            if (!co.input("meat, bread, salt, pepper, egg", "The meal has been added!"))
+                return CheckResult(false, "Your output should contain \"The meal has been added!\"")
+
+            if (!co.inputNext("What would you like to do (add, show, exit)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about the required action: \"(add, show, exit)?\""
+                )
+
+            if (!co.input(
+                    "show", "Category: lunch", "Name: sushi", "Ingredients:",
+                    "salmon", "rice", "avocado"
+                )
+            )
+                return CheckResult(false, "Wrong \"show\" output for the lunch meal.")
+
+            if (!co.inputNext("Category: breakfast", "Name: english", "Ingredients:",
+                    "sausages", "eggs")
+            )
+                return CheckResult(false, "Wrong \"show\" output for the breakfast meal.")
+
+            if (!co.inputNext("Category: dinner", "Name: meatballs", "Ingredients:",
+                    "meat", "bread", "salt", "pepper", "egg")
+            )
+                return CheckResult(false, "Wrong \"show\" output for the dinner meal.")
+
+            if (!co.inputNext("What would you like to do (add, show, exit)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about the required action: \"(add, show, exit)?\""
+                )
+
+            if (!co.input("exit", "Bye!"))
+                return CheckResult(false, "Your output should contain \"Bye!\"")
+
+            if (!co.programIsFinished())
+                return CheckResult(false, "The application didn't exit.")
+        } catch (e: Exception) {
+            return CheckResult(false, "An exception was thrown while testing - ${e.message}")
+        }
+
+        return CheckResult.correct()
+    }
+
+    @DynamicTest(order = 5)
+    fun normalExeNew02Test(): CheckResult {
+        try {
+            val dbFile = File("meals.db")
+            if (!dbFile.exists()) return CheckResult(false, "The meals.db database file doesn't exist.")
+        } catch (e: Exception) {
+            return CheckResult(false, "An exception was thrown, while trying to check a database file.")
+        }
+        try {
+            val co = CheckOutput()
+            if (!co.start("What would you like to do (add, show, exit)?"))
+                return CheckResult(
+                    false,
+                    "Your program should ask the user about the required action: \"(add, show, exit)?\""
+                )
+
+            if (!co.input(
+                    "show", "Category: lunch", "Name: sushi", "Ingredients:",
+                    "salmon", "rice", "avocado"
+                )
+            )
+                return CheckResult(false, "Wrong \"show\" output for a saved meal.")
+
+            if (!co.input("exit", "Bye!"))
+                return CheckResult(false, "Your output should contain \"Bye!\"")
+
+            if (!co.programIsFinished())
+                return CheckResult(false, "The application didn't exit.")
+        } catch (e: Exception) {
+            return CheckResult(false, "An exception was thrown while testing - ${e.message}")
+        }
+
+        return CheckResult.correct()
+    }
+
+}
+
+class dbTable (val name: String, val columnNameType: List<Pair<String, String>>)
+
+fun checkTableSchema(dbUrl: String, tables: List<dbTable>): Pair<Boolean, String> {
+    try {
+        val connection = DriverManager.getConnection(dbUrl)
+        val meta: DatabaseMetaData = connection.metaData
+
+        for (table in tables) {
+            var tableMeta = meta.getTables(null, null, table.name, null)
+            if (!tableMeta.next() || table.name.lowercase() != tableMeta.getString("TABLE_NAME").lowercase())
+                return Pair(false, "The table \"${table.name}\" doesn't exist.")
+
+            var columns = meta.getColumns(null, null, table.name, null)
+            val columnsData = mutableListOf<Pair<String, String>>()
+            while (columns.next()) {
+                val column = Pair(
+                    columns.getString("COLUMN_NAME").lowercase(),
+                    columns.getString("TYPE_NAME").lowercase()
+                )
+                columnsData.add(column)
+            }
+
+            for (c in table.columnNameType) {
+                if (c !in columnsData) {
+                    if (c.first !in columnsData.map { it.first })
+                        return Pair(false, "The column \"${c.first}\" of the table \"${table.name}\" doesn't exist.")
+                    return Pair(false, "The column \"${c.first}\" of the table \"${table.name}\" is of the wrong type.")
+                }
+            }
+        }
+
+        connection.close()
+    } catch (e: Exception) {
+        return Pair(false, "An exception was thrown, while trying to check the database schema - ${e.message}")
+    }
+
+    return Pair(true, "")
 }
 
 class CheckOutput {
