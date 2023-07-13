@@ -1,47 +1,113 @@
+import java.sql.Connection
+import java.sql.DriverManager
+import java.sql.Statement
+
 // 식사를 나타내는 클래스를 정의합니다. 이 클래스는 식사의 종류, 이름, 그리고 재료 리스트를 속성으로 갖습니다.
 data class Meal(val category: String, val name: String, val ingredients: List<String>)
 
-// Meal 객체를 저장할 리스트를 선언합니다. 이 리스트는 mutable로, 요소를 추가하거나 제거할 수 있습니다.
-val meals = mutableListOf<Meal>()
-
 fun main() {
+    val connection = DriverManager.getConnection("jdbc:sqlite:meals.db")
+    val statement = connection.createStatement()
+
+    // Create the meals table if it doesn't exist
+    statement.execute(
+        """
+        CREATE TABLE IF NOT EXISTS meals (
+            meal_id INTEGER PRIMARY KEY,
+            category TEXT,
+            meal TEXT
+        )
+        """
+    )
+
+    // Create the ingredients table if it doesn't exist
+    statement.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ingredients (
+            ingredient_id INTEGER PRIMARY KEY,
+            ingredient TEXT,
+            meal_id INTEGER,
+            FOREIGN KEY (meal_id) REFERENCES meals (meal_id)
+        )
+        """
+    )
+
     // 무한 루프를 시작합니다. 사용자가 'exit'를 입력하면 루프를 종료합니다.
     while (true) {
         println("What would you like to do (add, show, exit)?")
         when (readLine()) {
-            "add" -> add()  // 사용자가 'add'를 입력하면, add() 함수를 호출합니다.
-            "show" -> show()  // 사용자가 'show'를 입력하면, show() 함수를 호출합니다.
-            "exit" -> {  // 사용자가 'exit'를 입력하면, "Bye!"를 출력하고 프로그램을 종료합니다.
+            "add" -> addMeal(statement)
+            "show" -> showMeals(statement)
+            "exit" -> {
                 println("Bye!")
-                return
+                break
             }
+            else -> println("Invalid option. Please try again.")
         }
     }
+
+    connection.close()
 }
 
-fun add() {
-    // 각각의 함수를 호출하여 식사의 종류, 이름, 그리고 재료 리스트를 받아옵니다.
+fun addMeal(statement: Statement) {
     val category = getCategory()
     val name = getName()
     val ingredients = getIngredients()
-    // Meal 객체를 생성하여 리스트에 추가합니다.
-    meals.add(Meal(category, name, ingredients))
+
+    statement.execute("INSERT INTO meals (category, meal) VALUES ('$category', '$name')")
+    val mealId = statement.generatedKeys.getInt(1)
+
+    for (ingredient in ingredients) {
+        statement.execute("INSERT INTO ingredients (ingredient, meal_id) VALUES ('$ingredient', $mealId)")
+    }
+
     println("The meal has been added!")
 }
 
-fun show() {
-    // 리스트가 비어 있으면, "No meals saved. Add a meal first."를 출력합니다.
-    if (meals.isEmpty()) {
-        println("No meals saved. Add a meal first.")
-    } else {
-        // 리스트에 있는 각 Meal 객체에 대해, 식사의 종류, 이름, 그리고 재료를 출력합니다.
-        meals.forEach { meal ->
-            println("\nCategory: ${meal.category}")
-            println("Name: ${meal.name}")
-            println("Ingredients:")
-            meal.ingredients.forEach { println(it) }
+fun showMeals(statement: Statement) {
+    val mealsResult = statement.executeQuery(
+        """
+        SELECT meals.category, meals.meal, ingredients.ingredient
+        FROM meals
+        JOIN ingredients ON meals.meal_id = ingredients.meal_id
+        """
+    )
+
+    var currentCategory = ""
+    var currentMeal = ""
+    var ingredients = mutableListOf<String>()
+
+    while (mealsResult.next()) {
+        val category = mealsResult.getString("category")
+        val meal = mealsResult.getString("meal")
+        val ingredient = mealsResult.getString("ingredient")
+
+        if (category != currentCategory || meal != currentMeal) {
+            if (currentCategory.isNotEmpty() && currentMeal.isNotEmpty()) {
+                printMeal(currentCategory, currentMeal, ingredients)
+            }
+            currentCategory = category
+            currentMeal = meal
+            ingredients = mutableListOf()
         }
+
+        ingredients.add(ingredient)
     }
+
+    if (currentCategory.isNotEmpty() && currentMeal.isNotEmpty()) {
+        printMeal(currentCategory, currentMeal, ingredients)
+    }
+
+    if (currentCategory.isEmpty() && currentMeal.isEmpty()) {
+        println("No meals saved. Add a meal first.")
+    }
+}
+
+fun printMeal(category: String, meal: String, ingredients: List<String>) {
+    println("\nCategory: $category")
+    println("Name: $meal")
+    println("Ingredients:")
+    ingredients.forEach { println(it) }
 }
 
 fun getCategory(): String {
